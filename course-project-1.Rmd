@@ -1,0 +1,105 @@
+---
+title: "Course Project 1"
+author: "Aditya Iyengar"
+date: "09/04/2020"
+output: html_document
+---
+
+This is the documentation for Course Project 1 for the online course **Reproducible Research** offered by *Johns Hopkins University* on Coursera.  
+You can find the project details in the Readme file.  
+
+### Step 1: Loading and Preprocessing the Data
+Let's load the data from the link and unzip it.
+```{r, echo = TRUE}
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip", "activity.zip", method = "curl")
+dataset <- read.csv(unzip("activity.zip"))
+```
+Here's a basic overview of the dataset.
+```{r, echo = TRUE}
+str(dataset)
+```
+Let's also process the dates by converting them using the *lubridate* package.
+```{r, echo = TRUE, results = "hide"}
+library(lubridate)
+dataset$date <- ymd(dataset$date)
+```
+  
+### Step 2: Analysis of the number of steps taken
+First, we calculate the total number of steps per day.
+```{r, echo = TRUE}
+dailysteps <- tapply(dataset$steps, dataset$date, sum, na.rm = TRUE)
+```
+We then calculate the mean and median steps taken per day. 
+```{r, echo = TRUE}
+print(paste("Mean steps per day:", (round(mean(dailysteps, na.rm = TRUE), digits = 2))))
+print(paste("Median steps per day:", (round(median(dailysteps, na.rm = TRUE), digits = 2))))
+```
+Here is a histogram plot of the number of steps per day.
+```{r, echo = TRUE}
+hist(dailysteps, main = "Histogram of steps per day", xlab = "Total steps per day", ylab = "Number of days", col = "skyblue", ylim = c(0, 40))
+```
+  
+### Step 3: Average Daily Activity Pattern
+The time interval with the maximum steps per day, on an average is given by:
+```{r, echo = TRUE}
+stepstime <- tapply(dataset$steps, dataset$interval, mean, na.rm=TRUE)
+print(paste(names(which(stepstime == max(stepstime))), "with", max(stepstime), "steps on an average"))
+```
+Here is a time series plot of the average daily activity trend.
+```{r, echo = TRUE}
+plot(names(stepstime), stepstime, type='l', main = "Daily Activity Trend", xlab = "Time", ylab = "Average steps", ylim = c(0, 250))
+```
+  
+### Step 4: Imputing Missing Values
+```{r, echo = TRUE}
+print(paste("Number of missing values:", sum(is.na(dataset))))
+```
+To impute the missing values, we will use the mean steps during that particular time interval over the entire dataset.
+```{r, echo = TRUE}
+dataset1 <- dataset
+dataset1 <- cbind(dataset, stepstime)
+for(i in 1:length(dataset1$steps)){
+  if(is.na(dataset1$steps[i])==TRUE){
+    dataset1$steps[i] <- dataset1$stepstime[i] 
+  }
+}
+```
+Let us attempt to analyze this new dataset.
+First, we calculate the total number of steps per day.
+```{r, echo = TRUE}
+dailysteps1 <- tapply(dataset1$steps, dataset1$date, sum, na.rm = TRUE)
+```
+We then calculate the mean and median steps taken per day. 
+```{r, echo = TRUE}
+print(paste("Mean steps per day:", (round(mean(dailysteps1, na.rm = TRUE), digits = 2))))
+print(paste("Median steps per day:", (round(median(dailysteps1, na.rm = TRUE), digits = 2))))
+```
+We observe an increase in the mean and median steps per day. This occurs because the NA values are replaced by average imputed values.  
+Here is a histogram plot of the number of steps per day.
+```{r, echo = TRUE}
+hist(dailysteps1, main = "Histogram of steps per day with imputed data", xlab = "Total steps per day", ylab = "Number of days", col = "skyblue", ylim = c(0, 40))
+```
+  
+### Step 5: Weekends vs Weekdays
+Let us compare the daily activity trend for weekends and weekdays.
+```{r, echo = TRUE}
+library(chron)
+dataset2 <- dataset1
+isweekend <- is.weekend(dataset2$date)
+dataset2 <- cbind(dataset2, isweekend)
+dataset3 <- dataset2
+for(i in 17568:1){
+  if(dataset2$isweekend[i]==TRUE){
+    dataset2 <- dataset2[-i, ]
+  }
+}
+for(i in 17568:1){
+  if(dataset3$isweekend[i]==FALSE){
+    dataset3 <- dataset3[-i, ]
+  }
+}
+stepstime2 <- tapply(dataset2$steps, dataset2$interval, mean, na.rm=TRUE)
+stepstime3 <- tapply(dataset3$steps, dataset3$interval, mean, na.rm=TRUE)
+plot(names(stepstime2), stepstime2, main = "Weekday Activity", type = "l", xlab = "Time", ylab = "Average steps")
+plot(names(stepstime3), stepstime3, main = "Weekend Activity", type = "l", xlab = "Time", ylab = "Average steps")
+```
